@@ -2,24 +2,21 @@
 using ServerSharing.Data;
 using System;
 using System.Collections.Generic;
-using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace ServerSharingLibrary
 {
     public static class ServerSharingApi
     {
-        private static readonly HttpClient _client = new HttpClient();
-
-        private static string _function;
+        private static YandexFunction _function;
         private static string _userId;
 
-        public static void Initialize(string function, string userId)
+        public static void Initialize(string functionId, string userId)
         {
             if (Initialized)
                 throw new InvalidOperationException(nameof(ServerSharingApi) + " has already been initialized");
 
-            _function = function ?? throw new ArgumentNullException(nameof(function));
+            _function = new YandexFunction(functionId ?? throw new ArgumentNullException(nameof(functionId)));
             _userId = userId ?? throw new ArgumentNullException(nameof(userId));
         }
 
@@ -30,7 +27,7 @@ namespace ServerSharingLibrary
             EnsureInitialize();
 
             var request = Request.Create("UPLOAD", _userId, JsonConvert.SerializeObject(uploadData));
-            return await Post(request);
+            return await _function.Post(request);
         }
 
         public async static Task<ExtendedResponse<byte[]>> Download(string id)
@@ -38,7 +35,7 @@ namespace ServerSharingLibrary
             EnsureInitialize();
 
             var request = Request.Create("DOWNLOAD", _userId, id);
-            var response = await Post(request);
+            var response = await _function.Post(request);
 
             return new ExtendedResponse<byte[]>(response, Convert.FromBase64String(response.Body));
         }
@@ -48,7 +45,7 @@ namespace ServerSharingLibrary
             EnsureInitialize();
 
             var request = Request.Create("LOAD_IMAGE", _userId, id);
-            var response = await Post(request);
+            var response = await _function.Post(request);
 
             return new ExtendedResponse<byte[]>(response, Convert.FromBase64String(response.Body));
         }
@@ -58,7 +55,7 @@ namespace ServerSharingLibrary
             EnsureInitialize();
 
             var request = Request.Create("DELETE", _userId, id);
-            return await Post(request);
+            return await _function.Post(request);
         }
 
         public async static Task<Response> Like(string id)
@@ -66,7 +63,7 @@ namespace ServerSharingLibrary
             EnsureInitialize();
 
             var request = Request.Create("LIKE", _userId, id);
-            return await Post(request);
+            return await _function.Post(request);
         }
 
         public async static  Task<Response> Dislike(string id)
@@ -74,7 +71,7 @@ namespace ServerSharingLibrary
             EnsureInitialize();
 
             var request = Request.Create("DISLIKE", _userId, id);
-            return await Post(request);
+            return await _function.Post(request);
         }
 
         public async static Task<Response> Rate(string id, sbyte rate)
@@ -88,7 +85,7 @@ namespace ServerSharingLibrary
             };
 
             var request = Request.Create("RATE", _userId, JsonConvert.SerializeObject(ratingRequest));
-            return await Post(request);
+            return await _function.Post(request);
         }
 
         public async static Task<ExtendedResponse<SelectResponseData>> Info(string id)
@@ -96,7 +93,7 @@ namespace ServerSharingLibrary
             EnsureInitialize();
 
             var request = Request.Create("INFO", _userId, id);
-            var response = await Post(request);
+            var response = await _function.Post(request);
 
             return new ExtendedResponse<SelectResponseData>(response, JsonConvert.DeserializeObject<SelectResponseData>(response.Body));
         }
@@ -114,7 +111,7 @@ namespace ServerSharingLibrary
             };
 
             var request = Request.Create("SELECT", _userId, JsonConvert.SerializeObject(body));
-            var response = await Post(request);
+            var response = await _function.Post(request);
             
             return new ExtendedResponse<List<SelectResponseData>>(response, JsonConvert.DeserializeObject<List<SelectResponseData>>(response.Body));
         }
@@ -124,28 +121,9 @@ namespace ServerSharingLibrary
             EnsureInitialize();
 
             var request = Request.Create("COUNT", _userId, JsonConvert.SerializeObject(entryType));
-            var response = await Post(request);
+            var response = await _function.Post(request);
 
             return new ExtendedResponse<ulong>(response, Convert.ToUInt64(response.Body));
-        }
-
-        private async static Task<Response> Post(Request request)
-        {
-            var body = new StringContent(JsonConvert.SerializeObject(request));
-            var response = await _client.PostAsync($"https://functions.yandexcloud.net/{_function}?integration=raw", body);
-
-            var responseString = await response.Content.ReadAsStringAsync();
-
-            try
-            {
-                response.EnsureSuccessStatusCode();
-            }
-            catch (HttpRequestException exception)
-            {
-                throw new HttpRequestException($"Response: {responseString}", exception);
-            }
-
-            return JsonConvert.DeserializeObject<Response>(responseString);
         }
 
         private static void EnsureInitialize()
