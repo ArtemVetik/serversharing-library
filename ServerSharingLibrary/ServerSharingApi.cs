@@ -30,24 +30,24 @@ namespace ServerSharingLibrary
             return await _function.Post(request);
         }
 
-        public async static Task<ExtendedResponse<byte[]>> Download(string id)
+        public async static Task<byte[]> Download(string id)
         {
             EnsureInitialize();
 
             var request = Request.Create("DOWNLOAD", _userId, id);
             var response = await _function.Post(request);
 
-            return new ExtendedResponse<byte[]>(response, Convert.FromBase64String(response.Body));
+            return Convert.FromBase64String(response.Body);
         }
 
-        public async static Task<ExtendedResponse<byte[]>> LoadImage(string id)
+        public async static Task<byte[]> LoadImage(string id)
         {
             EnsureInitialize();
 
             var request = Request.Create("LOAD_IMAGE", _userId, id);
             var response = await _function.Post(request);
 
-            return new ExtendedResponse<byte[]>(response, Convert.FromBase64String(response.Body));
+            return Convert.FromBase64String(response.Body);
         }
 
         public async static Task<Response> Delete(string id)
@@ -88,42 +88,39 @@ namespace ServerSharingLibrary
             return await _function.Post(request);
         }
 
-        public async static Task<ExtendedResponse<SelectResponseData>> Info(string id)
+        public async static Task<SelectResponseData> Info(string id)
         {
             EnsureInitialize();
 
             var request = Request.Create("INFO", _userId, id);
             var response = await _function.Post(request);
 
-            return new ExtendedResponse<SelectResponseData>(response, JsonConvert.DeserializeObject<SelectResponseData>(response.Body));
+            return JsonConvert.DeserializeObject<SelectResponseData>(response.Body);
         }
 
-        public async static Task<ExtendedResponse<List<SelectResponseData>>> Select(EntryType entryType, SelectRequestBody.SelectOrderBy[] orderBy, ulong limit = 10, ulong offset = 0)
+        public async static Task<List<SelectResponseData>> SelectSelf(SelectEntryType entryType)
         {
             EnsureInitialize();
 
-            var body = new SelectRequestBody()
-            {
-                EntryType = entryType,
-                OrderBy = orderBy,
-                Limit = limit,
-                Offset = offset,
-            };
-
-            var request = Request.Create("SELECT", _userId, JsonConvert.SerializeObject(body));
+            var request = Request.Create("SELECT_SELF", _userId, JsonConvert.SerializeObject(entryType));
             var response = await _function.Post(request);
-            
-            return new ExtendedResponse<List<SelectResponseData>>(response, JsonConvert.DeserializeObject<List<SelectResponseData>>(response.Body));
+
+            return JsonConvert.DeserializeObject<List<SelectResponseData>>(response.Body);
         }
 
-        public async static Task<ExtendedResponse<ulong>> Count(EntryType entryType)
+        public async static Task<ulong> Count()
         {
             EnsureInitialize();
 
-            var request = Request.Create("COUNT", _userId, JsonConvert.SerializeObject(entryType));
+            var request = Request.Create("COUNT", string.Empty, string.Empty);
             var response = await _function.Post(request);
 
-            return new ExtendedResponse<ulong>(response, Convert.ToUInt64(response.Body));
+            return Convert.ToUInt64(response.Body);
+        }
+
+        public static CachedSelectStream CreateSelectStream(Sort sort, ulong countOnPage)
+        {
+            return new CachedSelectStream(_function, _userId, sort, countOnPage);
         }
 
         private static void EnsureInitialize()

@@ -22,14 +22,14 @@ namespace ServerSharingLibrary
 
         public static bool Initialized => _function != null;
 
-        public async static Task<ExtendedResponse<string>> UserId(string id)
+        public async static Task<string> UserId(string id)
         {
             EnsureInitialize();
 
             var request = Request.Create("USER_ID", string.Empty, id);
             var response = await _function.Post(request);
 
-            return new ExtendedResponse<string>(response, response.Body.ToString());
+            return response.Body.ToString();
         }
 
         public async static Task<Response> Delete(string id, string userId)
